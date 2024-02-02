@@ -1,0 +1,109 @@
+
+
+pipeline{ 
+    agent any 
+    tools{
+        maven 'maven3.8.5'
+        
+    }
+    // triggers {
+    //     cron('0 0 * * *') // Runs at 12:00 am every day
+    // }
+    stages {
+
+        // stage('Clean Workspace') {
+        //     steps {
+        //         cleanWs()
+        //     }
+        // }
+        
+        stage('SVN Checkout'){
+            
+            steps{
+
+                
+                script{
+                    
+                            // checkout code from source controle
+                }
+        }
+        // stage('Sonarqube Analysis'){
+            
+        //     steps{
+                
+        //         script{
+
+        //             withSonarQubeEnv(credentialsId: 'sonar_9.9.1', installationName: 'sonarqube_9.9.1') {
+        //                 sh 'mvn clean package sonar:sonar'
+        //                 }      
+        //         }
+        //     }
+        // }
+        // stage("Quality Gate"){
+            
+        //     steps{
+        //         script{
+        //                 timeout(time: 1, unit: 'HOURS') {
+        //                 def qg = waitForQualityGate()
+        //                 if (qg.status != 'OK') {
+        //                     error "Pipeline aborted due to quality gate failure: ${qg.status}"
+        //                 }
+        //                 }
+        //         }
+        //     }
+        // }
+
+        stage('OWASP Dependency Check') {
+            steps {
+                script{
+                dependencyCheck additionalArguments: '''dependency-check.bat -s .
+                --format XML
+                --format HTML''', odcInstallation: '8.4.0'
+                }
+            }
+        }   
+stage('Fail Build on High Vulnerabilities') {
+    steps {
+        script {
+            
+def htmlFilePath = "${WORKSPACE}/dependency-check-report.html"
+def htmlContent = new File(htmlFilePath).text
+
+// Define variables to count vulnerabilities
+def mediumCount = (htmlContent =~ /Base Score: MEDIUM/).count
+def criticalCount = (htmlContent =~ /Base Score: CRITICAL/).count
+def highCount = (htmlContent =~ /Base Score: HIGH/).count
+
+// Print the counts
+println "Base Score: MEDIUM - $mediumCount"
+println "Base Score: CRITICAL - $criticalCount"
+println "Base Score: HIGH - $highCount"
+
+// Check for any vulnerabilities and determine the status
+if (mediumCount > 0 || criticalCount > 0 || highCount > 0) {
+                error("Build failed due to high vulnerabilities found in dependency-check-report")
+} 
+
+        }
+    }
+}
+         stage('build'){
+            
+            steps{
+                
+                script{
+
+                    sh 'sudo chmod 777 build.sh'
+                    sh 'bash build.sh'
+
+                    }
+                    
+                }
+            }
+    }
+
+}
+}
+
+
+    
